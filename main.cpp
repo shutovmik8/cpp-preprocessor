@@ -22,7 +22,7 @@ string GetFileContents(string file) {
     return {(istreambuf_iterator<char>(stream)), istreambuf_iterator<char>()};
 }
 
-bool Preprocess_work(const string& name, ofstream& out, const vector<path>& include_directories, const path& parent_file, bool search_this_dir) {
+bool PerformProcess(const string& name, ofstream& out, const vector<path>& include_directories, const path& parent_file, bool search_this_dir) {
     ifstream in;
     path found_dir;
     if (search_this_dir) {
@@ -31,8 +31,8 @@ bool Preprocess_work(const string& name, ofstream& out, const vector<path>& incl
     }
 
     if (!in.is_open()) {
-        for (const auto& p : include_directories) {
-            path end_path = p / path(name);
+        for (const auto& include_directory : include_directories) {
+            path end_path = include_directory / path(name);
             in.open(end_path);
             if (in.is_open()) {
                 found_dir = end_path;
@@ -49,10 +49,10 @@ bool Preprocess_work(const string& name, ofstream& out, const vector<path>& incl
     static regex reg1(R"/(\s*#\s*include\s*"([^"]*)"\s*)/");
     static regex reg2(R"/(\s*#\s*include\s*<([^>]*)>\s*)/");
     string file_str;
-    smatch m;
+    smatch match;
     while (getline(in, file_str)) {
-        if (regex_match(file_str, m, reg1)) {
-            if (!Preprocess_work(m[1], out, include_directories, found_dir, true)) {
+        if (regex_match(file_str, match, reg1)) {
+            if (!PerformProcess(match[1], out, include_directories, found_dir, true)) {
                 return false;
             }
             if (found_dir == begin_file) {
@@ -60,8 +60,8 @@ bool Preprocess_work(const string& name, ofstream& out, const vector<path>& incl
             }
             continue;
         } 
-        else if (regex_match(file_str, m, reg2)) {
-            if (!Preprocess_work(m[1], out, include_directories, found_dir, false)) {
+        else if (regex_match(file_str, match, reg2)) {
+            if (!PerformProcess(match[1], out, include_directories, found_dir, false)) {
                 return false;
             }
             if (found_dir == begin_file) {
@@ -89,7 +89,7 @@ bool Preprocess(const path& in_file, const path& out_file, const vector<path>& i
     in.close();
 
     ofstream out(out_file);
-    bool ret = Preprocess_work(in_file.filename().string(), out, include_directories, in_file, true);
+    bool ret = PerformProcess(in_file.filename().string(), out, include_directories, in_file, true);
     out.close();
     return ret;
 }
